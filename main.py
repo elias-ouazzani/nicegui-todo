@@ -1,19 +1,44 @@
 from nicegui import ui
+import firebase_admin
+from firebase_admin import credentials, firestore
+
+
+if not firebase_admin._apps:
+     
+    cred = credentials.Certificate("C:/Users/elias/OneDrive/serviceaccountkey.json")
+    firebase_admin.initialize_app(cred)
+db = firestore.client()
+
 
 
 tasks = []
 
 def add_task():
-      tasks.append(task_input.value)
+      task_text = task_input.value
+      tasks.append(task_text)
+      db.collection("tasks").add({"task": task_text})
       with task_list:
-          ui.checkbox(task_input.value)
+          ui.checkbox(task_text)
       task_input.value = ""
+      counter_label.text = f"Tasks: {len(tasks)}"
+
+
+def load_tasks():
+      docs = db.collection("tasks").stream()
+      for doc in docs:
+          data = doc.to_dict()
+          tasks.append(data["task"])
+          with task_list:
+              ui.checkbox(data["task"])
       counter_label.text = f"Tasks: {len(tasks)}"
 
 def clear_tasks():
       tasks.clear()
       task_list.clear()
       counter_label.text = "Tasks: 0"
+      docs = db.collection("tasks").stream()
+      for doc in docs:
+           doc.reference.delete()
 
 if __name__ in {"__main__", "__mp_main__"}:
       with ui.card().classes("w-96 mx-auto mt-10 p-6"):
@@ -24,4 +49,5 @@ if __name__ in {"__main__", "__mp_main__"}:
               ui.button("Add task!", on_click=add_task)
               ui.button("Clear all", on_click=clear_tasks).classes("bg-red-500")
           task_list = ui.column()
+      load_tasks()
       ui.run()
